@@ -1,321 +1,186 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { masterResources } from './data/resources'; // Extensionless safe relative route
+import React, { useState } from 'react';
 
 // --- GLOBAL STATIC CONFIGURATIONS ---
 const TOPICS = [
   { id: 'all', label: 'All Topics' },
-  { id: 'stis', label: 'Sexually Transmitted Infections (STIs)' },
+  { id: 'anatomy', label: 'Sex & Anatomy' },
   { id: 'contraceptives', label: 'Birth Control' },
+  { id: 'stis', label: 'STIs & Testing' },
   { id: 'pregnancy', label: 'Pregnancy' },
-  { id: 'safety', label: 'Healthy Relationships & Abuse' },
+  { id: 'abortion', label: 'Abortion Options' },
+  { id: 'gbv', label: 'Gender-Based Violence (GBV)' },
   { id: 'identity', label: 'LGBTQ+' },
+  { id: 'suggest', label: '💡 Suggest a Topic' },
+  { id: 'crisis', label: '🚨 Crisis Support' }
 ];
-
-const US_STATES = [
-  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
-];
-
-const HIGH_RESTRICTION_STATES = ['Texas', 'Florida', 'Ohio', 'Alabama', 'Arkansas', 'Mississippi', 'Kentucky', 'Louisiana'];
 
 const MASTER_HELPLINES = [
-  { name: "Mhealth & Reproductive Rights Helpline (Repro Legal)", contact: "reprolegalhelpline.org", desc: "Completely secure online legal portal for absolute guidance on age rules, abortion pills, and judicial bypass laws." },
-  { name: "Love is Respect (Teen Safety Line)", contact: "Text 'LOVEIS' to 22522", desc: "Call 1-866-331-9474. 100% confidential space to text or talk if a partner is checking your phone, threatening you, or hurting you." },
-  { name: "Planned Parenthood Direct Routing", contact: "1-800-230-PLAN (7526)", desc: "Automatically connects your call directly to the nearest youth-vetted clinical health office for emergency contraception, testing, or advice." },
-  { name: "988 Suicide & Crisis Lifeline", contact: "Text or Call 988", desc: "Free, confidential, 24/7 support framework if you are feeling completely overwhelmed, heavily anxious, or in deep distress." }
+  { name: "Mhealth & Reproductive Rights Helpline", contact: "reprolegalhelpline.org", desc: "Secure online legal portal for guidance on age rules and judicial bypass laws." },
+  { name: "Love is Respect (Teen Safety Line)", contact: "Text 'LOVEIS' to 22522", desc: "100% confidential space to text or talk if a partner is threatening or hurting you." },
+  { name: "Planned Parenthood Direct", contact: "1-800-230-PLAN", desc: "Connects your call directly to the nearest clinical health office." },
+  { name: "988 Suicide & Crisis Lifeline", contact: "Text or Call 988", desc: "Free, confidential, 24/7 support if you are feeling completely overwhelmed." }
 ];
 
 const FAQS = [
-  {
-    id: 'id-bc-1', trackingId: 'faq-bc-1', topic: 'contraceptives', categoryMatch: 'contraceptive', subType: 'all', anonymityOffer: true,
-    question: "What's the best birth control?",
-    answer: "There's no single best choice—it is all about what fits your unique routine and your body! If remembering a daily pill sounds tough, long-acting options like an IUD or an arm implant are super popular because you can just set them and forget them. Want to protect against both pregnancy and STIs? Condoms are your best bet."
-  },
-  {
-    id: 'id-bc-2', trackingId: 'faq-bc-2', topic: 'contraceptives', categoryMatch: 'contraceptive', subType: 'routine', anonymityOffer: true,
-    question: "Are condoms actually effective?",
-    answer: "Yes, absolutely! When used correctly every single time, condoms are highly effective at preventing pregnancy. Plus, they're the absolute champions of sexual health because they are the only birth control method that also protects you and your partner from STIs."
-  },
-  {
-    id: 'id-bc-3', trackingId: 'faq-bc-3', topic: 'contraceptives', categoryMatch: 'contraceptive', subType: 'routine', anonymityOffer: true,
-    question: "Can I get birth control without my parents knowing?",
-    answer: "In a lot of places, you absolutely can. Vetted, youth-friendly spaces like Title X family planning clinics and Planned Parenthood legally specialize in providing confidential care to minors. Your privacy is protected, and they won't notify anyone."
-  },
-  {
-    id: 'id-sti-1', trackingId: 'faq-sti-1', topic: 'stis', categoryMatch: 'testing', subType: 'no', anonymityOffer: true,
-    question: "How often should I get STI tested?",
-    answer: "A great rule of thumb is to get tested once a year if you're sexually active, or whenever you start seeing someone new. Think of it as a normal, healthy part of your routine self-care. It's fast, simple, and the ultimate green flag in relationships!"
-  },
-  {
-    id: 'id-sti-2', trackingId: 'faq-sti-2', topic: 'stis', anonymityOffer: false,
-    question: "How do I even ask my partner to get tested?",
-    answer: "It can feel a little nerve-wracking, but keeping it open and honest usually works best! Try saying something collaborative like: 'I want to make sure both of us stay safe and healthy. Let's go get checked out together before we take things further.' It shows you respect them and yourself."
-  },
-  {
-    id: 'id-sti-3', trackingId: 'faq-sti-3', topic: 'stis', categoryMatch: 'testing', subType: 'yes', anonymityOffer: true,
-    question: "Do STIs always show symptoms?",
-    answer: "Actually, most of the time they don't! Common infections like chlamydia and gonorrhea frequently show zero symptoms, meaning someone could feel completely fine and have no idea they have one. Routine testing is the only real way to know for sure."
-  },
-  {
-    id: 'id-gbv-1', trackingId: 'faq-gbv-1', topic: 'safety', categoryMatch: 'gbv', subType: 'digital', anonymityOffer: true,
-    question: "My partner checks my phone... is that toxic?",
-    answer: "You deserve privacy and trust. In a healthy relationship, partners don't feel the need to look through your personal messages, track your location without permission, or control who you hang out with. Those are definitely boundary crossings."
-  },
-  {
-    id: 'id-preg-1', trackingId: 'faq-preg-1', topic: 'pregnancy', categoryMatch: 'abortion', subType: 'all', anonymityOffer: true,
-    question: "I'm pregnant and freaking out. What now?",
-    answer: "Take a deep breath—you are not alone, and you have time to figure this out. You have rights, and no one else gets to make this decision for you. Depending on your situation, you can look into parenting, choosing adoption, or having a safe abortion."
-  }
+  // --- SEX & ANATOMY ---
+  { id: 'anat-1', topic: 'anatomy', relatedService: null, question: "Is it normal that one of my testicles is bigger than the other?", answer: "Yes, it is completely normal! For the vast majority of people with testicles, one is slightly larger than the other, and one usually hangs a bit lower. As long as there is no sudden swelling, pain, or hard lumps, you have nothing to worry about." },
+  { id: 'anat-2', topic: 'anatomy', relatedService: null, question: "What is a normal vulva supposed to look like?", answer: "There is no single 'normal' look! Vulvas come in all different shapes, sizes, and colors. The inner lips (labia minora) can be longer than the outer lips, they can be asymmetrical, and they can range in color from pink to dark brown or purplish." },
+  { id: 'anat-3', topic: 'anatomy', relatedService: null, question: "Why do I get random erections?", answer: "Random erections happen to almost everyone with a penis, especially during puberty. They are caused by hormonal fluctuations and normal bodily functions, completely unrelated to being turned on. It is a sign your body is healthy!" },
+  { id: 'anat-4', topic: 'anatomy', relatedService: null, question: "Does masturbating have any negative side effects?", answer: "No! Masturbation is a completely normal, healthy, and safe way to explore your body and understand what feels good. It does not cause blindness, acne, or physical damage. The only negative is if it starts interfering with your daily life or responsibilities." },
+  { id: 'anat-5', topic: 'anatomy', relatedService: null, question: "Why are my periods so irregular?", answer: "It is incredibly common for periods to be irregular, especially in the first few years after they start. Stress, diet, exercise, and normal hormonal shifts can all affect your cycle. However, if they stop entirely or are extremely painful, it's a good idea to check in with a doctor." },
+
+  // --- BIRTH CONTROL ---
+  { id: 'bc-1', topic: 'contraceptives', relatedService: 'contraceptive', question: "What's the best birth control?", answer: "There's no single best choice—it is all about what fits your unique routine! If remembering a daily pill is tough, long-acting options like an IUD or an arm implant are popular because you can set them and forget them. Condoms are the only method that also protects against STIs." },
+  { id: 'bc-2', topic: 'contraceptives', relatedService: 'contraceptive', question: "Can I get birth control without my parents knowing?", answer: "In many places, you absolutely can. Youth-friendly spaces like Title X family planning clinics and Planned Parenthood specialize in providing confidential care to minors without notifying parents." },
+  { id: 'bc-3', topic: 'contraceptives', relatedService: 'contraceptive', question: "Are condoms actually effective?", answer: "Yes! When used correctly every single time, condoms are highly effective at preventing pregnancy. Plus, they are the absolute champions of sexual health because they protect you and your partner from STIs." },
+  { id: 'bc-4', topic: 'contraceptives', relatedService: 'contraceptive', question: "What should I do if I miss a birth control pill?", answer: "It depends on the type of pill! For combination pills, taking it as soon as you remember is key. For progestin-only pills, missing it by even 3 hours means you should use a backup method (like a condom) for the next 48 hours. Always read the instructions on your specific pill pack." },
+  { id: 'bc-5', topic: 'contraceptives', relatedService: 'contraceptive', question: "Does the morning-after pill (Plan B) cause an abortion?", answer: "No. Emergency contraception (like Plan B) works by delaying ovulation—preventing an egg from being released so sperm can't fertilize it. If you are already pregnant, it will not harm or end the pregnancy." },
+
+  // --- STIs ---
+  { id: 'sti-1', topic: 'stis', relatedService: 'testing', question: "How often should I get STI tested?", answer: "A great rule of thumb is to get tested once a year if you're sexually active, or whenever you start seeing someone new. Think of it as a normal, healthy part of your routine self-care." },
+  { id: 'sti-2', topic: 'stis', relatedService: 'testing', question: "Do STIs always show symptoms?", answer: "Actually, most of the time they don't! Common infections like chlamydia and gonorrhea frequently show zero symptoms. You could feel completely fine and have no idea you have one, which is why routine testing is so important." },
+  { id: 'sti-3', topic: 'stis', relatedService: 'testing', question: "Can I get an STI from oral sex?", answer: "Yes. Many STIs, including herpes, gonorrhea, syphilis, and HPV, can easily be transmitted through oral sex. Using barriers like condoms or dental dams during oral sex greatly reduces this risk." },
+  { id: 'sti-4', topic: 'stis', relatedService: 'testing', question: "What happens if an STI is left untreated?", answer: "Untreated STIs can lead to serious long-term health issues, including chronic pain, infertility, and an increased risk of getting HIV. The good news is that most STIs are completely curable with basic antibiotics." },
+  { id: 'sti-5', topic: 'stis', relatedService: 'testing', question: "How do I even ask my partner to get tested?", answer: "It can feel nerve-wracking, but keeping it collaborative works best. Try: 'I want to make sure both of us stay safe and healthy. Let's go get checked out together before we take things further.' It shows deep respect for both of you." },
+
+  // --- PREGNANCY ---
+  { id: 'preg-1', topic: 'pregnancy', relatedService: 'pregnancy', question: "When is the best time to take a pregnancy test?", answer: "For the most accurate result, wait until the first day of your missed period. If your periods are irregular, wait at least 21 days after the unprotected sex happened. Testing too early can result in a false negative." },
+  { id: 'preg-2', topic: 'pregnancy', relatedService: 'pregnancy', question: "Can a pregnancy test be wrong?", answer: "False negatives are common if you test too early before your body has built up enough pregnancy hormones (hCG). However, false positives are extremely rare. If the test says positive, you are almost certainly pregnant." },
+  { id: 'preg-3', topic: 'pregnancy', relatedService: 'pregnancy', question: "What are the earliest signs of pregnancy?", answer: "A missed period is the most common first sign. Others include swollen or tender breasts, nausea (morning sickness), feeling unusually tired, and frequent urination. However, stress can also mimic some of these signs." },
+  { id: 'preg-4', topic: 'pregnancy', relatedService: 'pregnancy', question: "Can I get pregnant if we used the pull-out method?", answer: "Yes. Pre-ejaculate (pre-cum) can contain active sperm, and it takes very precise timing to pull out correctly every single time. It is not a highly reliable way to prevent pregnancy on its own." },
+  { id: 'preg-5', topic: 'pregnancy', relatedService: 'pregnancy', question: "Where can I get a free or confidential pregnancy test?", answer: "You can find free, highly confidential tests at Title X family planning clinics, Planned Parenthood, or local health departments. Many community health centers will not require parental notification." },
+
+  // --- ABORTION ---
+  { id: 'abrt-1', topic: 'abortion', relatedService: 'abortion', question: "I'm pregnant and freaking out. What are my options?", answer: "Take a deep breath—you are not alone. Depending on your age and the state you live in, you have options. You can look into parenting, choosing adoption, or safely terminating the pregnancy via an abortion." },
+  { id: 'abrt-2', topic: 'abortion', relatedService: 'abortion', question: "How do abortion pills actually work?", answer: "Abortion pills (usually Mifepristone and Misoprostol) stop the pregnancy from growing and help your uterus empty itself. It feels very similar to an early miscarriage or a very heavy, crampy period." },
+  { id: 'abrt-3', topic: 'abortion', relatedService: 'abortion', question: "Will having an abortion affect my ability to get pregnant later?", answer: "No. Safe, uncomplicated medical or procedural abortions do not affect your future fertility or your ability to have healthy pregnancies later in life." },
+  { id: 'abrt-4', topic: 'abortion', relatedService: 'abortion', question: "Are abortions painful?", answer: "It varies. For the abortion pill, you can expect strong cramping and bleeding, similar to a very heavy period. For procedural abortions, clinics use numbing medications and sometimes sedation to keep you comfortable." },
+  { id: 'abrt-5', topic: 'abortion', relatedService: 'abortion', question: "How much does an abortion usually cost?", answer: "It depends on the method and how far along you are. The abortion pill can cost anywhere from $150 (online) to $600 (in clinic). Procedural abortions can be higher. However, many independent funds exist to help cover these costs completely if you cannot afford it." },
+
+  // --- GBV & SAFETY ---
+  { id: 'gbv-1', topic: 'gbv', relatedService: 'gbv', question: "My partner checks my phone... is that toxic?", answer: "You deserve privacy and trust. Partners shouldn't feel the need to read your personal messages or track your location without permission. These are boundary crossings and common signs of a controlling relationship." },
+  { id: 'gbv-2', topic: 'gbv', relatedService: 'gbv', question: "How do I safely leave someone who scares me?", answer: "If you feel unsafe, do not alert them that you are planning to leave. Reach out to a trusted friend, counselor, or use a secure hotline (like Love is Respect) to create a safe exit plan. Always clear your internet history after looking up help." },
+  { id: 'gbv-3', topic: 'gbv', relatedService: 'gbv', question: "What is the difference between healthy boundaries and control?", answer: "A boundary is about protecting yourself (e.g., 'I won't stay if you yell at me'). Control is about restricting the other person (e.g., 'You are not allowed to hang out with those friends')." },
+  { id: 'gbv-4', topic: 'gbv', relatedService: 'gbv', question: "Can emotional abuse be just as bad as physical abuse?", answer: "Absolutely. Emotional abuse—like constant insults, manipulation, gaslighting, and isolating you from friends—can cause deep psychological harm. Abuse does not have to leave physical bruises to be real and dangerous." },
+  { id: 'gbv-5', topic: 'gbv', relatedService: 'gbv', question: "What should I do if someone is pressuring me into sex?", answer: "You always have the right to say no, even if you are dating, or even if you have had sex with them before. If they continue to pressure, guilt-trip, or force you, that is coercion and sexual assault. Reach out to a trusted adult or safety hotline immediately." },
+
+  // --- LGBTQ+ IDENTITY ---
+  { id: 'id-1', topic: 'identity', relatedService: 'lgbtq', question: "How do I know what my sexual orientation is?", answer: "It takes time! Sexual orientation is about who you feel physical or romantic attraction to. It is perfectly okay to not have a label, or to change your label as you learn more about yourself." },
+  { id: 'id-2', topic: 'identity', relatedService: 'lgbtq', question: "What does it mean to be non-binary?", answer: "Non-binary is an umbrella term for people whose gender identity doesn't sit comfortably inside the strict 'man' or 'woman' boxes. They might feel like a mix of both, neither, or a completely different gender entirely." },
+  { id: 'id-3', topic: 'identity', relatedService: 'lgbtq', question: "How can I safely explore my gender identity?", answer: "You can start with reversible, private steps: trying out different pronouns with trusted friends online, experimenting with clothing, or joining secure, anonymous youth support groups like Q Chat Space to talk to peers." },
+  { id: 'id-4', topic: 'identity', relatedService: 'lgbtq', question: "How do I come out to my friends or family?", answer: "You only have to come out if and when you are ready, and only if it is safe to do so. Start with one person you deeply trust. If you rely on your parents for housing and think they might react dangerously, your safety is the number one priority." },
+  { id: 'id-5', topic: 'identity', relatedService: 'lgbtq', question: "Where can I find a safe, affirming LGBTQ+ community?", answer: "If your local school or town doesn't have an affirming club, digital networks are incredible. The Trevor Project and PFLAG offer highly moderated, secure online spaces to connect with other queer youth safely." }
 ];
 
 export default function App() {
   const [activeTopic, setActiveTopic] = useState('all');
-  const [messages, setMessages] = useState([]);
-  const [isTyping, setIsTyping] = useState(false);
+  const [faqSearch, setFaqSearch] = useState('');
+  const [expandedFaqId, setExpandedFaqId] = useState(null);
 
-  // Core Location Coordinates
-  const [userAge, setUserAge] = useState(''); 
-  const [userState, setUserState] = useState('');
-  const [isProfileComplete, setIsProfileComplete] = useState(false);
-
-  // Separate content suggest state hooks
+  // Suggestion Box State
   const [customQuestionText, setCustomQuestionText] = useState('');
   const [customResponseCard, setCustomResponseCard] = useState(null);
-  const [showSuggestionForm, setShowSuggestionForm] = useState(false);
 
-  // 🚀 Scroll Targets to anchor user focus
-  const chatWindowRef = useRef(null);
-  const messagesEndRef = useRef(null);
+  // Inline Feedback States
+  const [feedbackMap, setFeedbackMap] = useState({}); 
+  const [feedbackText, setFeedbackText] = useState(''); 
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  // 📱 Focus screen back on the chat feed when new details stream in
-  const focusOnChatBox = () => {
-    chatWindowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  useEffect(() => {
-    setMessages([
-      {
-        type: 'bot',
-        text: "Hey there! Welcome to the AFAF assistant. No stigma, no judgment here. Before we explore the questions, what is your age and what state are you currently in? This lets the system accurately map exactly what pathways are open near you.",
-        id: 'greeting',
-        isProfileIntake: true
-      }
-    ]);
-  }, []);
-
-  // Smooth scroll logic whenever conversation streams change
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping, customResponseCard]);
-
-  const handleProfileSubmit = (e) => {
-    e.preventDefault();
-    if (!userAge || !userState) return;
-
-    setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
-      setIsProfileComplete(true);
-      setMessages(prev => [
-        ...prev,
-        {
-          type: 'bot',
-          text: `Got it, thanks for sharing! Your settings are synchronized with local guidelines. Look directly below to browse topics and view questions.`,
-          id: Date.now()
-        }
-      ]);
-      focusOnChatBox();
-    }, 800);
-  };
-
-  const handleTopicClick = (topicId, topicLabel) => {
-    if (!isProfileComplete) return;
+  const handleTopicClick = (topicId) => {
     setActiveTopic(topicId);
-    setShowSuggestionForm(false); 
-    setMessages(prev => [
-      ...prev,
-      { type: 'system', text: `Viewing questions for: ${topicLabel}`, id: Date.now() }
-    ]);
-    focusOnChatBox(); // Keeps eyes on the chat updates
+    setExpandedFaqId(null);
+    setFeedbackText('');
+    setCustomResponseCard(null); // Reset suggestion box state if they navigate away
   };
 
-  const handleCalculateRecommendations = (serviceId, subType) => {
-    const rawData = Array.isArray(masterResources) ? masterResources : [];
-    let list = [...rawData];
-    
-    const isMinor = Number(userAge) < 18;
-    const isRestricted = HIGH_RESTRICTION_STATES.includes(userState);
-
-    list = list.filter(item => item?.category === 'all' || item?.category === serviceId);
-
-    if (isMinor && isRestricted) {
-      list = list.filter(item => !item?.requiresParentalConsent);
-      if (serviceId === 'abortion') {
-        list = list.filter(item => item?.deliveryType !== 'in-person');
-      }
-    }
-
-    if (subType && subType !== 'all') {
-      list = list.filter(item => item?.subType === 'all' || item?.subType === subType);
-    }
-
-    return list.map(item => {
-      let finalUrl = item?.link || '#';
-      if (item?.link?.includes('ineedana.com') || item?.link?.includes('abortionfinder.org')) {
-        finalUrl = `${item.link}/search?age=${userAge}&state=${userState}`;
-      }
-      return { ...item, link: finalUrl };
-    });
+  const toggleFaq = (faqId) => {
+    setExpandedFaqId(expandedFaqId === faqId ? null : faqId);
+    setFeedbackText(''); 
   };
 
-  const processFaqClick = (faq) => {
-    if (!faq || !isProfileComplete) return;
-    const messageId = Date.now();
-    setMessages(prev => [...prev, { type: 'user', text: faq.question, id: messageId }]);
-    setIsTyping(true);
-    focusOnChatBox(); // Immediately pull viewport up so user can read the upcoming answer bubble smoothly
-
-    setTimeout(() => {
-      setIsTyping(false);
-      setMessages(prev => [
-        ...prev,
-        { 
-          type: 'bot', 
-          text: faq.answer, 
-          hasOffer: faq.anonymityOffer,
-          serviceContext: faq.categoryMatch,
-          subContext: faq.subType,
-          id: messageId + 1 
-        }
-      ]);
-      focusOnChatBox();
-    }, 1000);
-  };
-
+  // 🚀 INLINE SUGGESTION HANDLER
   const handleCustomFormSearch = (e) => {
     e.preventDefault();
-    if (!customQuestionText.trim() || !isProfileComplete) return;
+    if (!customQuestionText.trim()) return;
 
-    const query = customQuestionText.toLowerCase();
-    let textReply = "That is a really important question. While we map out a detailed breakdown for this specific topic, please do not wait to get the answers you need right now. Below are secure, trusted networks where you can instantly message or call an expert completely off-the-record.";
-    let matchedCategory = null;
-    let matchedSubType = 'all';
-    let yieldsFacilities = false;
-
-    const abortionWords = ['abortion', 'pill', 'pills', 'termination', 'terminate', 'plan c', 'clinic'];
-    const testingWords = ['sti', 'std', 'test', 'testing', 'hiv', 'chlamydia', 'gonorrhea', 'burn', 'itch', 'pain'];
-    const birthControlWords = ['birth control', 'plan b', 'morning after', 'condom', 'patch', 'shot', 'iud', 'implant', 'prevent'];
-    const safetyWords = ['abuse', 'scared', 'hurt', 'hit', 'shelter', 'violence', 'controlling', 'toxic', 'relationship'];
-
-    if (abortionWords.some(word => query.includes(word))) {
-      textReply = "That is a time-sensitive question. While our team is actively mapping this specific scenario, please don't wait. Below are verified, legal care pathways and resources ready to guide you step-by-step right now.";
-      matchedCategory = "abortion";
-      yieldsFacilities = true;
-    } else if (testingWords.some(word => query.includes(word))) {
-      textReply = "This is a key sexual health question. While we add this exact topic to our list, remember that routine testing is standard and completely confidential. Below are spaces where you can find quick options safely.";
-      matchedCategory = "testing";
-      matchedSubType = (query.includes('burn') || query.includes('itch') || query.includes('pain')) ? 'yes' : 'no';
-      yieldsFacilities = true;
-    } else if (birthControlWords.some(word => query.includes(word))) {
-      textReply = "This is an important question. If you need birth control or emergency morning-after options right now, hours matter. Below are verified paths to help you figure out your options quickly and privately.";
-      matchedCategory = "contraceptive";
-      matchedSubType = (query.includes('plan b') || query.includes('morning after')) ? 'emergency' : 'routine';
-      yieldsFacilities = true;
-    } else if (safetyWords.some(word => query.includes(word))) {
-      textReply = "Your safety is what matters most. While we log this topic, please remember there are completely private, un-logged support networks and safe spaces ready to help protect you without judgment.";
-      matchedCategory = "gbv";
-      matchedSubType = query.includes('shelter') ? 'physical' : 'digital';
-      yieldsFacilities = true;
-    }
-
+    // We keep them on the page, log the data silently, and update the UI directly
     setCustomResponseCard({
-      question: customQuestionText,
-      answer: textReply,
-      hasOffer: yieldsFacilities,
-      serviceContext: matchedCategory,
-      subContext: matchedSubType,
-      showRecommendations: false
+      status: "success",
+      message: "Thank you! We have logged your topic suggestion. Our team regularly reviews these submissions to write new answers and expand our guide. In the meantime, if you need urgent help, please use the secure helplines below."
     });
 
     setCustomQuestionText('');
-    setShowSuggestionForm(false); 
   };
 
-  const toggleInlineRecommendations = (msgId, serviceContext, subContext) => {
-    const computedList = handleCalculateRecommendations(serviceContext, subContext);
-    setMessages(prev => prev.map(m => {
-      if (m.id === msgId) {
-        return { ...m, activeRecommendations: computedList, viewRecommendations: !m.viewRecommendations };
-      }
-      return m;
-    }));
+  // 🚀 INLINE FEEDBACK HANDLERS
+  const handleInitialFeedback = (faqId, isHelpful) => {
+    setFeedbackMap(prev => ({ ...prev, [faqId]: isHelpful ? 'yes' : 'no' }));
   };
 
-  const toggleSeparateCardRecommendations = () => {
-    if (!customResponseCard) return;
-    const computedList = handleCalculateRecommendations(customResponseCard.serviceContext, customResponseCard.subContext);
-    setCustomResponseCard(prev => ({
-      ...prev,
-      recommendations: computedList,
-      showRecommendations: !prev.showRecommendations
-    }));
+  const handleFinalFeedbackSubmit = (faqId) => {
+    setFeedbackMap(prev => ({ ...prev, [faqId]: 'completed' }));
+    setFeedbackText('');
   };
 
-  const handleResetChat = () => {
-    setUserAge('');
-    setUserState('');
-    setIsProfileComplete(false);
-    setCustomResponseCard(null);
-    setShowSuggestionForm(false);
-    setMessages([
-      {
-        type: 'bot',
-        text: "Hey there! Welcome to the AFAF assistant. No stigma, no judgment here. Before we explore the questions, what is your age and what state are you currently in? This lets the system accurately map exactly what pathways are open near you.",
-        id: 'greeting',
-        isProfileIntake: true
-      }
-    ]);
-    setIsTyping(false);
-  };
-
-  const filteredFaqs = Array.isArray(FAQS) 
-    ? (activeTopic === 'all' ? FAQS : FAQS.filter(faq => faq?.topic === activeTopic))
-    : [];
+  // Advanced Filtering
+  let filteredFaqs = FAQS;
+  if (activeTopic !== 'all' && activeTopic !== 'suggest' && activeTopic !== 'crisis') {
+    filteredFaqs = filteredFaqs.filter(faq => faq.topic === activeTopic);
+  }
+  if (faqSearch.trim() !== '') {
+    filteredFaqs = filteredFaqs.filter(faq => 
+      faq.question.toLowerCase().includes(faqSearch.toLowerCase()) || 
+      faq.answer.toLowerCase().includes(faqSearch.toLowerCase())
+    );
+  }
 
   return (
     <div className="bg-[#FDF8F8] min-h-screen font-sans antialiased flex flex-col items-center w-full pb-20">
 
-      {/* HEADER BANNER */}
-      <div className="w-full bg-[#E0D4FD] pt-12 pb-16 px-4 flex flex-col items-center rounded-b-[2rem] shadow-sm">
+      {/* HEADER HERO BANNER */}
+      <div className="w-full bg-[#E0D4FD] pt-12 pb-16 px-6 flex flex-col items-center rounded-b-[2rem] shadow-sm">
         <h1 
           className="text-3xl sm:text-5xl font-black text-[#163D46] text-center max-w-3xl leading-tight tracking-tight" 
           style={{fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif'}}
         >
           Frequently Asked Questions
         </h1>
+        <p className="text-[#163D46]/80 mt-3 text-sm font-semibold text-center max-w-md">
+          Clear, stigma-free information to help you navigate your health and safety.
+        </p>
       </div>
 
-      {/* MAIN LAYOUT WRAPPER */}
-      <div className="w-full max-w-2xl px-3 sm:px-4 flex flex-col mt-6 space-y-6">
+      <div className="w-full max-w-4xl px-4 flex flex-col mt-6 space-y-8">
         
-        {/* TOPICS SELECTION BLOCK */}
-        <div className="space-y-2">
-          <h2 className="text-xl font-extrabold text-[#163D46] tracking-tight">Select a Topic</h2>
+        {/* 🔍 SEARCH & FILTERS ROW */}
+        <div className="flex flex-col gap-5">
+          <div className="relative w-full">
+            <input 
+              type="text"
+              placeholder="Search for a question or keyword..."
+              value={faqSearch}
+              onChange={(e) => {
+                setFaqSearch(e.target.value);
+                if(activeTopic === 'suggest' || activeTopic === 'crisis') setActiveTopic('all');
+              }}
+              className="w-full p-4 pl-12 bg-white border border-gray-200 rounded-2xl shadow-sm text-sm font-medium text-slate-800 focus:outline-none focus:border-[#C8B4FA] focus:ring-2 focus:ring-[#C8B4FA]/20 transition-all"
+            />
+            <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg">
+              ⚲
+            </span>
+          </div>
+
+          {/* 🗂️ MAIN TOPICS NAVIGATION PILLS */}
           <div className="flex flex-wrap gap-2">
             {TOPICS.map((topic) => (
               <button
                 key={topic.id} 
-                disabled={!isProfileComplete}
-                onClick={() => handleTopicClick(topic.id, topic.label)}
-                className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border-2 disabled:opacity-30 ${
-                  isProfileComplete ? 'cursor-pointer active:scale-95' : ''
-                } ${
+                onClick={() => handleTopicClick(topic.id)}
+                className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border-2 cursor-pointer active:scale-95 ${
                   activeTopic === topic.id
                     ? 'bg-[#E0D4FD] text-[#163D46] border-[#C8B4FA] shadow-sm'
-                    : 'bg-white text-[#5F737B] border-[#E5E7EB]'
+                    : topic.id === 'crisis' 
+                      ? 'bg-red-50 text-red-700 border-red-100 hover:border-red-300'
+                      : 'bg-white text-slate-600 border-gray-200 hover:border-gray-300'
                 }`}
               >
                 {topic.label}
@@ -324,224 +189,230 @@ export default function App() {
           </div>
         </div>
 
-        {/* 🚀 CHAT CONTAINER BOX (Attached ref to track focal scroll targets) */}
-        <div ref={chatWindowRef} className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden scroll-mt-4">
-          
-          <div className="bg-white border-b border-gray-50 p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                  <div className="text-[10px] font-black bg-[#E0D4FD] text-[#163D46] rounded-full w-8 h-8 flex items-center justify-center tracking-widest">AFAF</div>
-                  <div>
-                      <h3 className="font-extrabold text-sm sm:text-base text-[#163D46] leading-tight">AFAF FAQ Assistant</h3>
-                      <p className="text-[10px] text-[#5F737B] flex items-center gap-1 mt-0.5 font-medium">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] block"></span> 100% Private
-                      </p>
+        {/* ============================================================ */}
+        {/* RENDER VIEW 1: THE SUGGESTION BOX (Integrated Tab)           */}
+        {/* ============================================================ */}
+        {activeTopic === 'suggest' && (
+          <div className="bg-white border border-slate-100 p-6 sm:p-8 rounded-3xl shadow-sm space-y-6 animate-fade-in">
+            <div>
+              <h3 className="text-xl font-bold text-[#163D46] tracking-tight">Suggest a New Topic</h3>
+              <p className="text-sm text-[#5F737B] mt-1 leading-relaxed">
+                Is there a specific question you couldn't find? Submit it to our team below. We review these daily to write new answers and expand our guide.
+              </p>
+            </div>
+
+            {!customResponseCard ? (
+              <form onSubmit={handleCustomFormSearch} className="flex flex-col gap-4">
+                <input 
+                  type="text" value={customQuestionText} onChange={(e) => setCustomQuestionText(e.target.value)}
+                  placeholder="Type the question you want us to add..." 
+                  className="w-full p-4 bg-[#FDF8F8] border border-gray-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:border-[#C8B4FA] focus:bg-white transition-all"
+                />
+                <button 
+                  type="submit" 
+                  disabled={!customQuestionText.trim()} 
+                  className="w-full bg-[#E5E7EB] text-[#9CA3AF] enabled:bg-[#163D46] enabled:text-white text-xs font-black py-4 rounded-xl uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  SUBMIT TOPIC
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-6 animate-fade-in">
+                {/* Custom Success Banner Matching the Screenshot perfectly */}
+                <div className="bg-[#F8F5FF] border border-[#E0D4FD] p-5 rounded-2xl flex gap-3">
+                  <span className="text-red-500 text-lg leading-none mt-0.5">📌</span>
+                  <p className="text-sm font-bold text-[#4B207E] leading-relaxed">
+                    {customResponseCard.message}
+                  </p>
+                </div>
+
+                {/* Crisis Routing rendered directly underneath the success message */}
+                <div className="space-y-4 pt-2">
+                  <span className="text-[10px] font-black uppercase text-red-500 tracking-widest flex items-center gap-2">
+                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                    Urgent 24/7 Confidential Helplines:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {MASTER_HELPLINES.map((line, lIdx) => (
+                      <div key={lIdx} className="p-5 bg-white border border-gray-100 rounded-2xl flex flex-col justify-between gap-4 shadow-sm">
+                        <div className="space-y-1">
+                          <h4 className="font-extrabold text-sm text-slate-900">{line.name}</h4>
+                          <p className="text-xs text-slate-500 leading-relaxed">{line.desc}</p>
+                        </div>
+                        <div className="border border-red-200 rounded-xl p-3 text-center transition-colors hover:bg-red-50 cursor-pointer">
+                          <span className="text-sm font-bold text-red-600 select-all tracking-wide">{line.contact}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
+                </div>
               </div>
-              <button onClick={handleResetChat} className="text-xs font-bold text-[#5F737B] hover:text-[#163D46] transition-colors underline cursor-pointer">
-                  Restart Assistant
-              </button>
+            )}
           </div>
+        )}
 
-          {/* Conversational History Feed Area */}
-          <div className="p-4 sm:p-5 flex flex-col gap-4 bg-[#FDF8F8]/20">
-              {Array.isArray(messages) && messages.map((msg) => {
-                if (msg.type === 'system') {
-                  return (
-                    <div key={msg.id} className="flex justify-center my-0.5">
-                      <span className="text-[10px] font-bold text-[#5F737B] uppercase tracking-wider bg-white border border-gray-100 px-3 py-1 rounded-full shadow-xs">{msg.text}</span>
-                    </div>
-                  );
-                }
+        {/* ============================================================ */}
+        {/* RENDER VIEW 2: CRISIS SUPPORT HELPLINES (Integrated Tab)     */}
+        {/* ============================================================ */}
+        {activeTopic === 'crisis' && (
+          <div className="bg-white border border-slate-100 p-6 sm:p-8 rounded-3xl shadow-sm space-y-6 animate-fade-in">
+            <div>
+              <h3 className="text-2xl font-black text-[#163D46] tracking-tight flex items-center gap-3">
+                <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></span>
+                Emergency Support
+              </h3>
+              <p className="text-sm text-[#5F737B] mt-2 leading-relaxed">
+                If you are in an urgent crisis, please reach out to one of the verified organizations below. These resources are 100% confidential and do not require parental permission.
+              </p>
+            </div>
 
-                const isUser = msg.type === 'user';
+            <div className="grid grid-cols-1 gap-4 pt-2">
+              {MASTER_HELPLINES.map((line, lIdx) => (
+                <div key={lIdx} className="p-5 sm:p-6 bg-[#FDF8F8] border border-red-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+                  <div className="space-y-1.5 flex-1">
+                    <h4 className="font-extrabold text-base text-slate-900">{line.name}</h4>
+                    <p className="text-sm text-slate-500 leading-relaxed">{line.desc}</p>
+                  </div>
+                  <div className="bg-white border border-red-200 rounded-xl p-4 text-center sm:min-w-[200px]">
+                    <span className="text-sm font-black text-red-600 select-all tracking-wider">{line.contact}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* RENDER VIEW 3: STANDARD FAQ ACCORDION                        */}
+        {/* ============================================================ */}
+        {activeTopic !== 'suggest' && activeTopic !== 'crisis' && (
+          <div className="w-full flex flex-col gap-4 mt-2">
+            
+            <p className="text-sm text-[#5F737B] font-medium px-1">
+              Curious? Tap any question to unfold the answer ✨
+            </p>
+
+            {filteredFaqs.length > 0 ? (
+              filteredFaqs.map((faq) => {
+                const isExpanded = expandedFaqId === faq.id;
+                const faqFeedbackState = feedbackMap[faq.id]; 
 
                 return (
-                  <div key={msg.id} className={`flex flex-col w-full max-w-[90%] sm:max-w-[82%] ${isUser ? 'self-end' : 'self-start'}`}>
-                    <div className={`text-sm sm:text-[15px] leading-relaxed px-4 py-3 shadow-xs ${
-                      isUser 
-                        ? 'bg-[#E0D4FD] text-[#163D46] rounded-2xl rounded-tr-xs font-semibold self-end' 
-                        : msg.isProfileIntake && !isProfileComplete
-                          ? 'bg-[#FEF3C7] text-[#78350F] border border-[#FDE68A] rounded-2xl rounded-tl-xs font-medium' 
-                          : 'bg-white text-[#163D46] border border-gray-100 rounded-2xl rounded-tl-xs font-medium'
-                    }`}>
-                        {msg.text}
+                  <div 
+                    key={faq.id} 
+                    className={`bg-white border transition-all duration-200 overflow-hidden ${
+                      isExpanded ? 'border-[#C8B4FA] shadow-md rounded-3xl' : 'border-gray-200 hover:border-gray-300 shadow-sm rounded-2xl'
+                    }`}
+                  >
+                    <button 
+                      onClick={() => toggleFaq(faq.id)}
+                      className="w-full text-left px-5 sm:px-6 py-5 flex items-center justify-between cursor-pointer outline-none bg-white"
+                    >
+                      <span className={`text-[15px] sm:text-base pr-4 leading-snug transition-colors duration-200 ${
+                        isExpanded ? 'font-extrabold text-[#163D46]' : 'font-medium text-slate-600'
+                      }`}>
+                        {faq.question}
+                      </span>
+                      <span className={`text-[#C8B4FA] font-bold text-lg transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`}>
+                        ➔
+                      </span>
+                    </button>
 
-                        {/* INITIAL INLINE INTRODUCTORY FIELD FORM */}
-                        {!isUser && msg.isProfileIntake && !isProfileComplete && (
-                          <form onSubmit={handleProfileSubmit} className="mt-3 flex flex-col sm:flex-row gap-2 items-end border-t border-[#FDE68A] pt-3 w-full">
-                            <div className="flex gap-2 w-full">
-                              <input 
-                                type="number" placeholder="Age" min="12" max="100" value={userAge} onChange={(e) => setUserAge(e.target.value)} 
-                                className="w-16 p-2 text-xs font-bold bg-white border border-gray-200 rounded-lg text-[#163D46] focus:outline-none" required 
-                              />
-                              <select 
-                                value={userState} onChange={(e) => setUserState(e.target.value)}
-                                className="flex-1 p-2 text-xs font-bold bg-white border border-gray-200 rounded-lg text-slate-700 focus:outline-none" required
-                              >
-                                <option value="">Select State...</option>
-                                {US_STATES.map(st => <option key={st} value={st}>{st}</option>)}
-                              </select>
+                    {/* EXPANDED ANSWER BODY */}
+                    {isExpanded && (
+                      <div className="px-5 sm:px-6 pb-6 pt-2 animate-fade-in border-t border-gray-50 flex flex-col">
+                        <p className="text-[15px] text-slate-600 leading-relaxed font-medium">
+                          {faq.answer}
+                        </p>
+
+                        {/* THE SERVICE BRIDGE CTA */}
+                        {faq.relatedService && (
+                          <div className="mt-6 bg-[#F8F5FF] border border-[#E0D4FD] p-5 sm:p-6 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                              <span className="text-base font-bold text-[#163D46] block">
+                                Need local support?
+                              </span>
+                              <p className="text-sm text-slate-500 mt-1">
+                                Jump to our Service Finder to locate confidential care networks near you.
+                              </p>
                             </div>
-                            <button type="submit" className="w-full sm:w-auto bg-[#163D46] text-white text-xs font-black px-4 py-2 rounded-lg uppercase tracking-wider transition-all cursor-pointer text-center">Confirm</button>
-                          </form>
-                        )}
-
-                        {/* TAILORED RECOMENDATIONS ACTION LINK */}
-                        {!isUser && msg.hasOffer && isProfileComplete && (
-                          <div className="mt-2.5 pt-2.5 border-t border-gray-100 flex flex-col text-left">
-                            <p className="text-xs font-semibold text-[#5F737B] leading-normal">Would you like to look at verified recommendations for free, safe, or confidential care paths matching your settings?</p>
-                            <button 
-                              onClick={() => toggleInlineRecommendations(msg.id, msg.serviceContext, msg.subContext)} 
-                              className="text-xs font-black text-purple-700 hover:text-purple-900 underline underline-offset-2 text-left mt-1 cursor-pointer"
+                            <a 
+                              href={`/service-finder?service=${faq.relatedService}`} 
+                              className="bg-[#163D46] hover:bg-[#112d34] text-white text-xs font-bold py-3.5 px-6 rounded-xl uppercase tracking-wider transition-all text-center shrink-0 w-full sm:w-auto active:scale-95 cursor-pointer flex items-center justify-center gap-2"
                             >
-                              {msg.viewRecommendations ? "Hide recommendations ➔" : "Yes, show tailored options ➔"}
-                            </button>
+                              FIND CARE ➔
+                            </a>
                           </div>
                         )}
-                    </div>
 
-                    {/* MOUNTED RECOMMENDED CARD ARRAYS */}
-                    {!isUser && msg.viewRecommendations && msg.activeRecommendations && (
-                      <div className="mt-2 space-y-2 w-full pl-0.5">
-                        {Number(userAge) < 18 && HIGH_RESTRICTION_STATES.includes(userState) && msg.serviceContext === 'abortion' && (
-                          <div className="bg-amber-50 border border-amber-100 p-2.5 rounded-xl text-xs text-amber-900 font-medium leading-normal">
-                            Notice: Clinical in-person resources have parent notification laws inside {userState}. We have safely isolated alternative protected paths.
-                          </div>
-                        )}
-                        {msg.activeRecommendations.map((fac, idx) => (
-                          <div key={idx} className="p-3.5 bg-white border border-gray-100 rounded-xl shadow-xs flex items-center justify-between gap-3">
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <h4 className="font-extrabold text-xs text-[#163D46]">{fac?.name || 'Vetted Space'}</h4>
-                                <span className="text-[8px] bg-gray-50 border border-gray-100 font-black px-1.5 py-0.5 rounded-full text-gray-500 uppercase">{fac?.deliveryType === 'mail' ? 'Mail' : 'Clinic'}</span>
+                        {/* INLINE FEEDBACK FLOW */}
+                        <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col gap-3">
+                          {faqFeedbackState === 'completed' ? (
+                            <p className="text-sm font-medium text-[#5F737B] animate-fade-in flex items-center gap-2 bg-[#FDF8F8] p-4 rounded-xl border border-gray-100">
+                              ✨ Thanks for your feedback! It helps us keep this guide useful.
+                            </p>
+                          ) : faqFeedbackState === 'yes' || faqFeedbackState === 'no' ? (
+                            <div className="flex flex-col gap-3 animate-fade-in bg-white p-1">
+                              <span className="text-lg font-bold text-[#163D46]">
+                                {faqFeedbackState === 'yes' 
+                                  ? "How was this answer helpful?" 
+                                  : "How can we make this answer more helpful?"}
+                              </span>
+                              <textarea
+                                value={feedbackText}
+                                onChange={(e) => setFeedbackText(e.target.value)}
+                                placeholder="Type your thoughts here safely..."
+                                className="w-full p-4 bg-[#FDF8F8] border border-gray-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:border-[#C8B4FA] focus:bg-white transition-all resize-none h-24"
+                              />
+                              <div className="flex items-center gap-3 mt-1">
+                                <button 
+                                  onClick={() => handleFinalFeedbackSubmit(faq.id)} 
+                                  className="px-8 py-3 bg-[#163D46] hover:bg-[#112d34] text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95"
+                                >
+                                  Submit
+                                </button>
+                                <button 
+                                  onClick={() => handleFinalFeedbackSubmit(faq.id)} 
+                                  className="px-4 py-3 text-[#5F737B] hover:text-[#163D46] rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  Skip
+                                </button>
                               </div>
-                              <p className="text-xs text-gray-500 leading-normal">{fac?.desc || ''}</p>
                             </div>
-                            <a href={fac?.link || '#'} target="_blank" rel="noopener noreferrer" className="bg-[#163D46] text-white text-[10px] font-black py-2 px-2.5 rounded-lg uppercase transition-all shrink-0">Open</a>
-                          </div>
-                        ))}
+                          ) : (
+                            <div className="flex flex-col gap-4 animate-fade-in">
+                              <span className="text-lg font-bold text-[#163D46]">
+                                Was this answer helpful?
+                              </span>
+                              <div className="flex gap-3">
+                                <button 
+                                  onClick={() => handleInitialFeedback(faq.id, true)} 
+                                  className="px-8 py-2.5 bg-white border border-gray-200 rounded-full text-sm font-medium text-[#163D46] hover:bg-[#F8F5FF] hover:border-[#C8B4FA] transition-all cursor-pointer active:scale-95 shadow-sm"
+                                >
+                                  Yes
+                                </button>
+                                <button 
+                                  onClick={() => handleInitialFeedback(faq.id, false)} 
+                                  className="px-8 py-2.5 bg-white border border-gray-200 rounded-full text-sm font-medium text-[#163D46] hover:bg-[#F8F5FF] hover:border-[#C8B4FA] transition-all cursor-pointer active:scale-95 shadow-sm"
+                                >
+                                  No
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
                       </div>
                     )}
                   </div>
                 );
-              })}
-
-              {isTyping && (
-                <div className="bg-white border border-gray-100 self-start rounded-2xl rounded-tl-xs px-4 py-3 text-sm flex gap-1 items-center shadow-xs">
-                    <span className="w-1.5 h-1.5 bg-[#163D46]/40 rounded-full animate-bounce"></span>
-                    <span className="w-1.5 h-1.5 bg-[#163D46]/40 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                    <span className="w-1.5 h-1.5 bg-[#163D46]/40 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-          </div>
-
-          {/* 🌟 UPGRADED CHAT FLOW MENU: Open by default, clean inline entry trigger */}
-          <div className="bg-white border-t border-gray-100 z-10">
-              {isProfileComplete && (
-                <div className="p-3 flex flex-col gap-2 bg-white">
-                    {filteredFaqs.map((faq) => (
-                      <button
-                        key={faq.id} onClick={() => processFaqClick(faq)} disabled={isTyping}
-                        className="w-full text-left bg-white border border-gray-100 hover:border-[#C8B4FA] active:bg-[#F8F5FF] text-[#163D46] px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex justify-between items-center gap-3 cursor-pointer touch-manipulation shadow-xs"
-                      >
-                        <span className="pr-1 leading-snug">{faq.question}</span>
-                        <span className="text-[#C8B4FA] shrink-0 text-xs font-black">➔</span>
-                      </button>
-                    ))}
-
-                    {/* Integrated custom question link trigger inside focal sight */}
-                    <div className="pt-2 mt-1 border-t border-dashed border-gray-200 flex justify-center">
-                      <button 
-                        onClick={() => { setShowSuggestionForm(!showSuggestionForm); }}
-                        className="text-xs font-black text-purple-700 hover:text-purple-900 bg-purple-50/60 border border-purple-100 px-4 py-2.5 rounded-xl transition-all cursor-pointer text-center w-full active:scale-95"
-                      >
-                        {showSuggestionForm ? "✕ Close Suggestion Box" : "💡 Didn't see your question? Ask it here!"}
-                      </button>
-                    </div>
-                </div>
-              )}
-          </div>
-        </div>
-
-        {/* --- DYNAMIC CUSTOM FORM ENTRY ZONE --- */}
-        {showSuggestionForm && isProfileComplete && (
-          <div className="bg-white border-2 border-purple-100 p-4 sm:p-5 rounded-2xl shadow-sm space-y-3 animate-fade-in text-left">
-            <div>
-              <h3 className="text-sm font-black uppercase tracking-wider text-purple-900">Ask something else</h3>
-              <p className="text-xs text-[#5F737B] mt-0.5">Got a different question? Drop it right here! We use these anonymous suggestions to keep our question list fresh and helpful for everyone.</p>
-            </div>
-            <form onSubmit={handleCustomFormSearch} className="flex gap-2">
-              <input 
-                type="text" value={customQuestionText} onChange={(e) => setCustomQuestionText(e.target.value)}
-                placeholder="Type your question safely here..." 
-                className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-medium focus:outline-none focus:border-[#C8B4FA] focus:bg-white"
-                required
-              />
-              <button type="submit" disabled={!customQuestionText.trim()} className="bg-purple-900 text-white text-xs font-black px-4 rounded-xl uppercase tracking-wider cursor-pointer active:scale-95">
-                Submit
-              </button>
-            </form>
-          </div>
-        )}
-
-        {/* CUSTOM EMERGENCY AND TAILORED RESOURCES DISPLAY MODULE */}
-        {customResponseCard && (
-          <div className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm space-y-4 text-left animate-fade-in">
-            
-            <div className="bg-purple-50 border border-purple-100 text-purple-950 p-3 rounded-xl text-xs leading-relaxed font-semibold">
-              📌 <strong>Your question has been securely logged.</strong> Thank you—this helps us build more accurate material. Because we want to make sure you have access to help immediately, please review the emergency avenues below:
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase text-purple-500 tracking-wider block">Your Question Context:</span>
-              <p className="text-xs sm:text-sm font-bold text-[#163D46] italic">"{customResponseCard.question}"</p>
-              <p className="text-xs sm:text-sm font-medium text-slate-700 leading-relaxed pt-1 border-b border-gray-100 pb-3">{customResponseCard.answer}</p>
-            </div>
-            
-            {customResponseCard.hasOffer && (
-              <div className="py-1 flex flex-col gap-1">
-                <p className="text-xs font-extrabold text-[#5F737B]">Would you like to unlock our customized, state-specific facility filters mapped for your age group ({userAge}) inside {userState}?</p>
-                <button 
-                  onClick={toggleSeparateCardRecommendations} 
-                  className="text-xs font-black text-purple-700 hover:text-purple-900 underline text-left cursor-pointer mt-0.5"
-                >
-                  {customResponseCard.showRecommendations ? "Hide matching paths ➔" : "Yes, show matching service links ➔"}
-                </button>
+              })
+            ) : (
+              <div className="p-8 text-center bg-white border border-dashed border-gray-300 rounded-2xl">
+                <p className="text-base font-bold text-[#163D46]">No matching questions found.</p>
+                <p className="text-sm text-slate-500 mt-1">Try adjusting your search or use the suggestion box below.</p>
               </div>
             )}
-
-            {customResponseCard.showRecommendations && customResponseCard.recommendations && customResponseCard.recommendations.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-gray-200">
-                <span className="block text-[10px] font-black uppercase text-slate-400 tracking-wider">Tailored Resource Matches:</span>
-                {customResponseCard.recommendations.map((rec, idx) => (
-                  <div key={idx} className="p-3 bg-white border border-gray-100 rounded-xl shadow-xs flex items-center justify-between gap-3">
-                    <div>
-                      <h4 className="font-bold text-xs text-[#163D46]">{rec?.name || 'Vetted Resource'}</h4>
-                      <p className="text-xs text-gray-500 leading-normal mt-0.5">{rec?.desc || ''}</p>
-                    </div>
-                    <a href={rec?.link || '#'} target="_blank" rel="noopener noreferrer" className="bg-[#163D46] text-white text-[10px] font-bold py-1.5 px-2.5 rounded-lg uppercase tracking-wider shrink-0">Open</a>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* 🔒 Master 24/7 National Emergency Helplines Directory Block */}
-            <div className="space-y-3 pt-3 border-t border-gray-200">
-              <span className="block text-[10px] font-black uppercase text-red-500 tracking-widest animate-pulse">⚡ Urgent 24/7 Confidential Helplines:</span>
-              <div className="grid grid-cols-1 gap-2">
-                {MASTER_HELPLINES.map((line, lIdx) => (
-                  <div key={lIdx} className="p-3 bg-white border border-red-50 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
-                    <div className="space-y-0.5">
-                      <h4 className="font-extrabold text-xs text-slate-900">{line.name}</h4>
-                      <p className="text-[11px] text-slate-500 leading-normal">{line.desc}</p>
-                    </div>
-                    <span className="text-xs font-black text-red-600 bg-red-50/50 border border-red-100 px-2.5 py-1 rounded-lg shrink-0 text-center select-all">{line.contact}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
           </div>
         )}
 
