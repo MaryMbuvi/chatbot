@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 
 // --- GLOBAL STATIC CONFIGURATIONS ---
+const US_STATES = [
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
+];
+
 const TOPICS = [
   { id: 'all', label: 'All Topics' },
   { id: 'anatomy', label: 'Sex & Anatomy' },
@@ -85,33 +89,36 @@ export default function App() {
   const [feedbackMap, setFeedbackMap] = useState({}); 
   const [feedbackText, setFeedbackText] = useState(''); 
 
+  // 🚀 Smart Bridge CTA States
+  const [bridgeActiveFaq, setBridgeActiveFaq] = useState(null);
+  const [bridgeAge, setBridgeAge] = useState('');
+  const [bridgeState, setBridgeState] = useState('');
+
   const handleTopicClick = (topicId) => {
     setActiveTopic(topicId);
     setExpandedFaqId(null);
     setFeedbackText('');
-    setCustomResponseCard(null); // Reset suggestion box state if they navigate away
+    setCustomResponseCard(null); 
+    setBridgeActiveFaq(null); 
   };
 
   const toggleFaq = (faqId) => {
     setExpandedFaqId(expandedFaqId === faqId ? null : faqId);
     setFeedbackText(''); 
+    setBridgeActiveFaq(null); 
   };
 
-  // 🚀 INLINE SUGGESTION HANDLER
   const handleCustomFormSearch = (e) => {
     e.preventDefault();
     if (!customQuestionText.trim()) return;
 
-    // We keep them on the page, log the data silently, and update the UI directly
     setCustomResponseCard({
       status: "success",
       message: "Thank you! We have logged your topic suggestion. Our team regularly reviews these submissions to write new answers and expand our guide. In the meantime, if you need urgent help, please use the secure helplines below."
     });
-
     setCustomQuestionText('');
   };
 
-  // 🚀 INLINE FEEDBACK HANDLERS
   const handleInitialFeedback = (faqId, isHelpful) => {
     setFeedbackMap(prev => ({ ...prev, [faqId]: isHelpful ? 'yes' : 'no' }));
   };
@@ -119,6 +126,22 @@ export default function App() {
   const handleFinalFeedbackSubmit = (faqId) => {
     setFeedbackMap(prev => ({ ...prev, [faqId]: 'completed' }));
     setFeedbackText('');
+  };
+
+  // 🚀 NEW: Silent Demographics Logger & Redirect
+  const handleBridgeRedirect = (serviceId) => {
+    // 1. Fire an event to Google Analytics (Silently captures the data)
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'service_bridge_click', {
+        'user_age': bridgeAge || 'unspecified',
+        'user_state': bridgeState || 'unspecified',
+        'service_type': serviceId
+      });
+    }
+
+    // 2. Build the URL and open the external app
+    const url = `https://service-finder-puce.vercel.app/?service=${serviceId}${bridgeAge ? `&age=${bridgeAge}` : ''}${bridgeState ? `&state=${bridgeState}` : ''}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // Advanced Filtering
@@ -190,7 +213,7 @@ export default function App() {
         </div>
 
         {/* ============================================================ */}
-        {/* RENDER VIEW 1: THE SUGGESTION BOX (Integrated Tab)           */}
+        {/* RENDER VIEW 1: THE SUGGESTION BOX                            */}
         {/* ============================================================ */}
         {activeTopic === 'suggest' && (
           <div className="bg-white border border-slate-100 p-6 sm:p-8 rounded-3xl shadow-sm space-y-6 animate-fade-in">
@@ -218,7 +241,6 @@ export default function App() {
               </form>
             ) : (
               <div className="space-y-6 animate-fade-in">
-                {/* Custom Success Banner Matching the Screenshot perfectly */}
                 <div className="bg-[#F8F5FF] border border-[#E0D4FD] p-5 rounded-2xl flex gap-3">
                   <span className="text-red-500 text-lg leading-none mt-0.5">📌</span>
                   <p className="text-sm font-bold text-[#4B207E] leading-relaxed">
@@ -226,7 +248,6 @@ export default function App() {
                   </p>
                 </div>
 
-                {/* Crisis Routing rendered directly underneath the success message */}
                 <div className="space-y-4 pt-2">
                   <span className="text-[10px] font-black uppercase text-red-500 tracking-widest flex items-center gap-2">
                     <span className="w-2 h-2 bg-red-500 rounded-full"></span>
@@ -252,7 +273,7 @@ export default function App() {
         )}
 
         {/* ============================================================ */}
-        {/* RENDER VIEW 2: CRISIS SUPPORT HELPLINES (Integrated Tab)     */}
+        {/* RENDER VIEW 2: CRISIS SUPPORT HELPLINES                      */}
         {/* ============================================================ */}
         {activeTopic === 'crisis' && (
           <div className="bg-white border border-slate-100 p-6 sm:p-8 rounded-3xl shadow-sm space-y-6 animate-fade-in">
@@ -325,23 +346,59 @@ export default function App() {
                           {faq.answer}
                         </p>
 
-                        {/* THE SERVICE BRIDGE CTA */}
+                        {/* 🚀 THE SMART SERVICE BRIDGE CTA */}
                         {faq.relatedService && (
-                          <div className="mt-6 bg-[#F8F5FF] border border-[#E0D4FD] p-5 sm:p-6 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div>
-                              <span className="text-base font-bold text-[#163D46] block">
-                                Need local support?
-                              </span>
-                              <p className="text-sm text-slate-500 mt-1">
-                                Jump to our Service Finder to locate confidential care networks near you.
-                              </p>
+                          <div className="mt-6 bg-[#F8F5FF] border border-[#E0D4FD] p-5 sm:p-6 rounded-2xl flex flex-col gap-4 transition-all">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                              <div>
+                                <span className="text-base font-bold text-[#163D46] block">
+                                  Need local support?
+                                </span>
+                                <p className="text-sm text-slate-500 mt-1">
+                                  Jump to our Service Finder to locate confidential care networks near you.
+                                </p>
+                              </div>
+                              
+                              {bridgeActiveFaq !== faq.id ? (
+                                <button 
+                                  onClick={() => setBridgeActiveFaq(faq.id)} 
+                                  className="bg-[#163D46] hover:bg-[#112d34] text-white text-xs font-bold py-3.5 px-6 rounded-xl uppercase tracking-wider transition-all text-center shrink-0 w-full sm:w-auto active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                                >
+                                  FIND CARE ➔
+                                </button>
+                              ) : null}
                             </div>
-                            <a 
-                              href={`/service-finder?service=${faq.relatedService}`} 
-                              className="bg-[#163D46] hover:bg-[#112d34] text-white text-xs font-bold py-3.5 px-6 rounded-xl uppercase tracking-wider transition-all text-center shrink-0 w-full sm:w-auto active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-                            >
-                              FIND CARE ➔
-                            </a>
+
+                            {/* PROGRESSIVE DISCLOSURE: Age/State Capture Form */}
+                            {bridgeActiveFaq === faq.id && (
+                              <div className="pt-4 border-t border-[#E0D4FD] animate-fade-in flex flex-col gap-3">
+                                <span className="text-sm font-bold text-[#163D46]">
+                                  Tell us your age and state so we can find the safest, most accurate options available to you. This information is never stored or shared:
+                                </span>
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                  <input 
+                                    type="number" placeholder="Age" min="12" max="110"
+                                    value={bridgeAge} onChange={(e) => setBridgeAge(e.target.value)}
+                                    className="w-full sm:w-24 p-3 bg-white border border-[#C8B4FA] rounded-xl text-sm font-bold text-[#163D46] focus:outline-none focus:ring-2 focus:ring-[#C8B4FA]"
+                                  />
+                                  <select 
+                                    value={bridgeState} onChange={(e) => setBridgeState(e.target.value)}
+                                    className="w-full sm:flex-1 p-3 bg-white border border-[#C8B4FA] rounded-xl text-sm font-bold text-[#163D46] focus:outline-none focus:ring-2 focus:ring-[#C8B4FA]"
+                                  >
+                                    <option value="">Select State...</option>
+                                    {US_STATES.map(st => <option key={st} value={st}>{st}</option>)}
+                                  </select>
+                                  
+                                  {/* Using a button to trigger GA tracking, then Redirect */}
+                                  <button 
+                                    onClick={() => handleBridgeRedirect(faq.relatedService)}
+                                    className="bg-[#C8B4FA] hover:bg-[#b096f8] text-[#163D46] text-xs font-black py-3 px-6 rounded-xl uppercase tracking-wider transition-all text-center flex items-center justify-center w-full sm:w-auto cursor-pointer"
+                                  >
+                                    GO ➔
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -410,7 +467,7 @@ export default function App() {
             ) : (
               <div className="p-8 text-center bg-white border border-dashed border-gray-300 rounded-2xl">
                 <p className="text-base font-bold text-[#163D46]">No matching questions found.</p>
-                <p className="text-sm text-slate-500 mt-1">Try adjusting your search or use the suggestion box below.</p>
+                <p className="text-sm text-slate-500 mt-1">Try adjusting your search to view other topics.</p>
               </div>
             )}
           </div>
