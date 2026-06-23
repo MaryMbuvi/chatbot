@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
 // --- GLOBAL STATIC CONFIGURATIONS ---
 const US_STATES = [
@@ -6,7 +6,6 @@ const US_STATES = [
 ];
 
 const TOPICS = [
-  { id: 'all', label: 'All Topics' },
   { id: 'anatomy', label: 'Sex & Anatomy' },
   { id: 'contraceptives', label: 'Birth Control' },
   { id: 'stis', label: 'STIs & Testing' },
@@ -14,6 +13,7 @@ const TOPICS = [
   { id: 'abortion', label: 'Abortion Options' },
   { id: 'gbv', label: 'Gender-Based Violence (GBV)' },
   { id: 'identity', label: 'LGBTQ+' },
+  { id: 'talk', label: 'How do I open up to loved ones?' }, // Renamed to user's exact phrase
   { id: 'suggest', label: '💡 Suggest a Topic' },
   { id: 'crisis', label: '🚨 Crisis Support' }
 ];
@@ -24,6 +24,32 @@ const MASTER_HELPLINES = [
   { name: "Planned Parenthood Direct", contact: "1-800-230-PLAN", desc: "Connects your call directly to the nearest youth-vetted clinical health office." },
   { name: "988 Suicide & Crisis Lifeline", contact: "Text or Call 988", desc: "Free, confidential, 24/7 support if you are feeling completely overwhelmed." }
 ];
+
+// --- HIGH-EMPATHY CONVERSATION MATRIX ---
+const SCRIPT_MATRIX = {
+  parent: {
+    gender: "I need to share something deeply personal about who I am. I’ve been reflecting on my identity for a long time, and I've realized that I am questioning my gender. I am still the same person you love, but I need you to help me navigate this safely and respect my journey.",
+    pregnancy: "I am coming to you because I am dealing with something really heavy and I need my family right now. I recently found out that I am pregnant. I'm scared, and while I don't expect you to have all the answers immediately, I really need you to help me look at my options calmly.",
+    hiv: "I need you to listen to me without judgment, because I am carrying a lot of weight. I recently went to a health clinic and tested positive for an STI/HIV. It is completely treatable and I am going to be okay physically, but emotionally I really need my parents to support me right now.",
+    mental_health: "I'm telling you this because I love you and I need help. My mental health has been in a really dark, overwhelming place lately, and I've realized I can't carry this alone anymore. Can we talk about finding a professional or counselor I can speak to?",
+    abortion: "I need to tell you something serious. I recently found out I'm pregnant, and after thinking it through completely, I have decided that getting an abortion is the right step for my life and my future. I really hope you can stand by my choice and help me get through the appointment safely."
+  },
+  friend: {
+    gender: "You are my best friend and someone I trust completely, so I want you to know the real me. I've been processing my identity lately, and I’m realizing that I'm non-binary/questioning my gender. I don't need you to completely understand everything right now, I just need my friend.",
+    pregnancy: "Hey, I am going through a massive crisis right now and you are the first person I thought of. I just found out that I am pregnant. I am completely freaking out. Can you please just sit with me and help me figure out what my next step should be?",
+    hiv: "I need to tell you something heavy, and I just need you to be my safe space right now. I just got my test results back from the clinic and I am positive for an STI/HIV. It's scary to say out loud, but I just really needed to talk to someone who won't treat me differently.",
+    mental_health: "Hey, things have been really dark for me lately and I've been pulling away because I'm struggling with my mental health. I'm realizing I shouldn't hide it from you. I just really need a friend to vent to without trying to fix everything for me.",
+    abortion: "I found out I'm pregnant, and I've already made up my mind that I need to get an abortion. It's the right choice for me, but I am terrified of handling the logistics alone. Can you look up some clinics with me or ride with me to the appointment?"
+  },
+  partner: {
+    gender: "I love our relationship and because I care about us being honest, I need to open up about something I've been sorting through inside. I've been deeply questioning my gender identity. This doesn't change how much I value you, but I need us to talk about what this means for our path forward together.",
+    pregnancy: "We need to talk about something very serious that affects both of us. I took a test and found out that I am pregnant. I know this is shocking and incredibly heavy news for us to digest, but I need us to approach this as a supportive team while we figure out our options.",
+    // 🚨 SPECIAL CASE: High Sympathy / Mutual Impact Script
+    hiv: "I need to tell you something incredibly difficult, and I want you to know I am leading with complete honesty and care for you. I just got my routine clinic results back, and I tested positive for an STI/HIV. I know this news directly impacts your health, your safety, and your emotions too, and I am so deeply sorry to bring this weight into our space. I want to make sure you get tested immediately, and I want to support you through the shock of this, just like I'm trying to process it myself.",
+    mental_health: "I care about you so much, which is why I need to be honest about why I've been distant lately. I am struggling deeply with my mental health and depression. It has nothing to do with how I feel about you, but it's making daily life hard, and I wanted to let you in so you know what I'm dealing with.",
+    abortion: "I recently found out that I am pregnant. I've spent a lot of time reflecting on where I am in life, and I have firmly decided that getting an abortion is the healthiest choice for my future. I know this decision impacts both of us emotionally, and I truly want to share this space with you if you can support my choice."
+  }
+};
 
 const FAQS = [
   // --- SEX & ANATOMY ---
@@ -77,7 +103,7 @@ const FAQS = [
 ];
 
 export default function App() {
-  const [activeTopic, setActiveTopic] = useState('all');
+  const [activeTopic, setActiveTopic] = useState('landing'); 
   const [faqSearch, setFaqSearch] = useState('');
   const [expandedFaqId, setExpandedFaqId] = useState(null);
 
@@ -89,17 +115,30 @@ export default function App() {
   const [feedbackMap, setFeedbackMap] = useState({}); 
   const [feedbackText, setFeedbackText] = useState(''); 
 
-  // 🚀 Bridge CTA States (Now Completely Optional)
+  // Bridge CTA States (Optional Shortcut)
   const [bridgeActiveFaq, setBridgeActiveFaq] = useState(null);
-  const [bridgeAgeGroup, setBridgeAgeGroup] = useState(''); // 'under_18' or '18_plus'
+  const [bridgeAgeGroup, setBridgeAgeGroup] = useState(''); 
   const [bridgeState, setBridgeState] = useState('');
 
+  // 🚀 Interactive Talk Script Builder State
+  const [talkStage, setTalkStage] = useState('form'); 
+  const [talkWho, setTalkWho] = useState('parent');
+  const [talkTopic, setTalkTopic] = useState('gender');
+  const [checkedBoxes, setCheckedBoxes] = useState({ step1: false, step2: false, step3: false });
+  const [todoBoxes, setTodoBoxes] = useState({ todo1: false, todo2: false, todo3: false });
+
   const handleTopicClick = (topicId) => {
-    setActiveTopic(topicId);
+    if (activeTopic === topicId) {
+      setActiveTopic('landing');
+    } else {
+      setActiveTopic(topicId);
+    }
     setExpandedFaqId(null);
     setFeedbackText('');
     setCustomResponseCard(null); 
-    setBridgeActiveFaq(null); 
+    setTalkStage('form');
+    setCheckedBoxes({ step1: false, step2: false, step3: false });
+    setTodoBoxes({ todo1: false, todo2: false, todo3: false });
   };
 
   const toggleFaq = (faqId) => {
@@ -128,9 +167,7 @@ export default function App() {
     setFeedbackText('');
   };
 
-  // 🚀 OPTIONAL REDIRECT HANDLER
   const handleBridgeRedirect = (serviceId) => {
-    // 1. Fire an event to Google Analytics (Silently captures whatever data they did provide)
     if (typeof window !== 'undefined' && window.gtag) {
       let readableAge = 'unspecified';
       if (bridgeAgeGroup === 'under_18') readableAge = 'Under 18';
@@ -143,7 +180,6 @@ export default function App() {
       });
     }
 
-    // 2. Build the URL dynamically based ONLY on what they filled out
     let url = `https://service-finder-puce.vercel.app/?service=${serviceId}`;
     if (bridgeAgeGroup) url += `&age=${bridgeAgeGroup}`;
     if (bridgeState) url += `&state=${bridgeState}`;
@@ -151,17 +187,28 @@ export default function App() {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  // Advanced Filtering
-  let filteredFaqs = FAQS;
-  if (activeTopic !== 'all' && activeTopic !== 'suggest' && activeTopic !== 'crisis') {
-    filteredFaqs = filteredFaqs.filter(faq => faq.topic === activeTopic);
-  }
-  if (faqSearch.trim() !== '') {
-    filteredFaqs = filteredFaqs.filter(faq => 
-      faq.question.toLowerCase().includes(faqSearch.toLowerCase()) || 
-      faq.answer.toLowerCase().includes(faqSearch.toLowerCase())
-    );
-  }
+  // Generate Script Output Text Dynamically based on the matrix mapping
+  const generatedScriptText = useMemo(() => {
+    const customCoreText = SCRIPT_MATRIX[talkWho]?.[talkTopic] || '';
+    return `"${customCoreText}"`;
+  }, [talkWho, talkTopic]);
+
+  // --- 🚀 INSTANT A-Z ALPHABETICAL PIPELINE ENGINE ---
+  const filteredFaqs = useMemo(() => {
+    let list = [...FAQS];
+    list.sort((a, b) => a.question.localeCompare(b.question));
+
+    if (activeTopic !== 'landing' && activeTopic !== 'suggest' && activeTopic !== 'crisis' && activeTopic !== 'talk') {
+      list = list.filter(faq => faq.topic === activeTopic);
+    }
+    if (faqSearch.trim() !== '') {
+      list = list.filter(faq => 
+        faq.question.toLowerCase().includes(faqSearch.toLowerCase()) || 
+        faq.answer.toLowerCase().includes(faqSearch.toLowerCase())
+      );
+    }
+    return list;
+  }, [activeTopic, faqSearch]);
 
   return (
     <div className="bg-[#FDF8F8] min-h-screen font-sans antialiased flex flex-col items-center w-full pb-20">
@@ -190,7 +237,7 @@ export default function App() {
               value={faqSearch}
               onChange={(e) => {
                 setFaqSearch(e.target.value);
-                if(activeTopic === 'suggest' || activeTopic === 'crisis') setActiveTopic('all');
+                if(activeTopic === 'suggest' || activeTopic === 'crisis' || activeTopic === 'talk') setActiveTopic('landing');
               }}
               className="w-full p-4 pl-12 bg-white border border-gray-200 rounded-2xl shadow-sm text-sm font-medium text-slate-800 focus:outline-none focus:border-[#C8B4FA] focus:ring-2 focus:ring-[#C8B4FA]/20 transition-all"
             />
@@ -207,7 +254,7 @@ export default function App() {
                 onClick={() => handleTopicClick(topic.id)}
                 className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border-2 cursor-pointer active:scale-95 ${
                   activeTopic === topic.id
-                    ? 'bg-[#E0D4FD] text-[#163D46] border-[#C8B4FA] shadow-sm'
+                    ? 'bg-[#163D46] text-white border-[#163D46] shadow-sm'
                     : topic.id === 'crisis' 
                       ? 'bg-red-50 text-red-700 border-red-100 hover:border-red-300'
                       : 'bg-white text-slate-600 border-gray-200 hover:border-gray-300'
@@ -220,7 +267,174 @@ export default function App() {
         </div>
 
         {/* ============================================================ */}
-        {/* RENDER VIEW 1: THE SUGGESTION BOX                            */}
+        {/* RENDER VIEW 1: DYNAMIC HIGH-EMPATHY SCRIPT GENERATOR         */}
+        {/* ============================================================ */}
+        {activeTopic === 'talk' && (
+          <div className="bg-white border border-slate-100 p-6 sm:p-10 rounded-3xl shadow-sm space-y-6 animate-fade-in w-full">
+            
+            {talkStage === 'form' ? (
+              <div className="space-y-6 animate-fade-in">
+                <div>
+                  <h3 className="text-xl font-bold text-[#163D46] tracking-tight">Conversation Blueprint Generator</h3>
+                  <p className="text-sm text-[#5F737B] mt-1 leading-relaxed">
+                    Opening up about sensitive topics is deeply nerve-wracking. Select who you are speaking to and the topic below to generate a tailored, compassionate blueprint to guide your conversation.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400 pl-1">1. Who are you talking to?</label>
+                    <div className="relative w-full">
+                      <select 
+                        value={talkWho} 
+                        onChange={(e) => setTalkWho(e.target.value)}
+                        className="w-full p-3.5 pl-4 pr-10 text-sm font-bold bg-[#FDF8F8] border border-gray-200 rounded-xl text-[#163D46] appearance-none focus:outline-none focus:border-[#C8B4FA] transition-all cursor-pointer shadow-sm"
+                      >
+                        <option value="parent">A Parent or Guardian</option>
+                        <option value="friend">A Best Friend or Peer</option>
+                        <option value="partner">A Romantic Partner</option>
+                      </select>
+                      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400 pl-1">2. What is the topic?</label>
+                    <div className="relative w-full">
+                      <select 
+                        value={talkTopic} 
+                        onChange={(e) => setTalkTopic(e.target.value)}
+                        className="w-full p-3.5 pl-4 pr-10 text-sm font-bold bg-[#FDF8F8] border border-gray-200 rounded-xl text-[#163D46] appearance-none focus:outline-none focus:border-[#C8B4FA] transition-all cursor-pointer shadow-sm"
+                      >
+                        <option value="gender">My Gender Identity</option>
+                        <option value="pregnancy">An Unplanned Pregnancy</option>
+                        <option value="hiv">My HIV/STI Status</option>
+                        <option value="mental_health">My Mental Health</option>
+                        <option value="abortion">Getting an Abortion</option>
+                      </select>
+                      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setTalkStage('result')}
+                  className="w-full bg-[#163D46] hover:bg-[#112d34] text-white font-extrabold text-base py-4 rounded-xl shadow-md transition-all active:scale-[0.99] cursor-pointer"
+                >
+                  Show me what to say
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-8 animate-fade-in">
+                
+                {/* Generated Text Script container box */}
+                <div className="bg-[#FDF8F8] rounded-2xl p-5 border-2 border-[#E0D4FD] relative">
+                  {/* FIXED SINGLE LINE LAYOUT */}
+                  <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                    <h4 className="text-xs font-black text-[#163D46] uppercase tracking-wider">Tip:</h4>
+                    <p className="text-xs text-slate-400 font-medium">You can read this exactly as written, or copy/paste it into a text message if saying it out loud feels too difficult.</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl shadow-inner text-[#163D46] font-bold text-base border-l-4 border-[#163D46] select-all leading-relaxed">
+                    {generatedScriptText}
+                  </div>
+                </div>
+
+                {/* Pre-conversation Safety Checklist cards */}
+                <div>
+                  <h4 className="text-xs font-black text-[#163D46] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <span className="text-base text-purple-400">✓</span> Pre-Conversation Safety Checklist
+                  </h4>
+                  <div className="space-y-2.5">
+                    {[
+                      { key: 'step1', label: "Make sure the timing is right and they aren't already stressed, rushing, or distracted." },
+                      { key: 'step2', label: "Find a quiet, secure, private space where other people cannot accidentally overhear you." },
+                      { key: 'step3', label: "Have an exit plan ready in case the conversation gets too intense (like a friend waiting outside)." }
+                    ].map(item => (
+                      <label key={item.key} className="flex items-start gap-3 p-4 bg-white rounded-xl border border-gray-200 cursor-pointer hover:border-purple-300 transition-colors shadow-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={checkedBoxes[item.key]} 
+                          onChange={(e) => setCheckedBoxes(prev => ({ ...prev, [item.key]: e.target.checked }))}
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#163D46] focus:ring-[#C8B4FA] cursor-pointer" 
+                        />
+                        <span className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">{item.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 🚀 NEW: Contextual "What TO Do" Framework */}
+                <div>
+                  <h4 className="text-xs font-black text-emerald-600 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <span className="text-base">✓</span> Things to Do
+                  </h4>
+                  <div className="space-y-2.5">
+                    {[
+                      { key: 'todo1', label: "Give them breathing room. Expecting an immediate perfect reaction adds tension. Allow them a silence buffer to fully absorb the impact." },
+                      { key: 'todo2', label: "Keep your breathing steady. Your nervous system anchors the emotional temperature of the room. If you stay grounded, they will stabilize faster." },
+                      { key: 'todo3', label: talkWho === 'partner' && talkTopic === 'hiv' ? "Acknowledge their personal stakes immediately. Validate that this impacts their safety and health too, showing you respect their right to be shocked." : "State clearly what you want from them—whether you are asking them to protect a secret, look up solutions, or just listen silently." }
+                    ].map(item => (
+                      <label key={item.key} className="flex items-start gap-3 p-4 bg-white rounded-xl border border-gray-200 cursor-pointer hover:border-emerald-300 transition-colors shadow-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={todoBoxes[item.key]} 
+                          onChange={(e) => setTodoBoxes(prev => ({ ...prev, [item.key]: e.target.checked }))}
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-300 cursor-pointer" 
+                        />
+                        <span className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">{item.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* What NOT to do behavioral guidelines (Icons Removed) */}
+                <div>
+                  <h4 className="text-xs font-black text-red-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <span className="text-base">⚠️</span> What NOT To Do
+                  </h4>
+                  <div className="space-y-2.5">
+                    <div className="p-4 bg-red-50/60 rounded-xl border border-red-100 shadow-sm flex flex-col gap-1">
+                      <span className="text-xs font-black text-red-800 uppercase tracking-wider">Don't yell or raise your voice</span>
+                      <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
+                        If they start matching or escalating volume, actively focus on staying low and steady. Yelling shuts down active processing.
+                      </p>
+                    </div>
+                    <div className="p-4 bg-red-50/60 rounded-xl border border-red-100 shadow-sm flex flex-col gap-1">
+                      <span className="text-xs font-black text-red-800 uppercase tracking-wider">Avoid absolute statements like "You always" or "You never"</span>
+                      <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
+                        These absolutes force people into an immediate defensive wall. Stick strictly to personal statements focused on what you feel and need.
+                      </p>
+                    </div>
+                    <div className="p-4 bg-red-50/60 rounded-xl border border-red-100 shadow-sm flex flex-col gap-1">
+                      <span className="text-xs font-black text-red-800 uppercase tracking-wider">Don't intercept or cut off their processing time</span>
+                      <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
+                        Initial processing stages are often driven by surprise, panic, or raw fear. Interrupting them to defend yourself stops them from getting past the initial shock.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Back / Reset Action link */}
+                <div className="pt-5 border-t border-gray-100 text-center">
+                  <button 
+                    onClick={() => setTalkStage('form')} 
+                    className="text-[#163D46] font-extrabold hover:text-slate-600 transition-colors underline decoration-2 underline-offset-4 cursor-pointer text-sm"
+                  >
+                    Start Over 
+                  </button>
+                </div>
+
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* RENDER VIEW 2: THE SUGGESTION BOX                            */}
         {/* ============================================================ */}
         {activeTopic === 'suggest' && (
           <div className="bg-white border border-slate-100 p-6 sm:p-8 rounded-3xl shadow-sm space-y-6 animate-fade-in">
@@ -280,7 +494,7 @@ export default function App() {
         )}
 
         {/* ============================================================ */}
-        {/* RENDER VIEW 2: CRISIS SUPPORT HELPLINES                      */}
+        {/* RENDER VIEW 3: CRISIS SUPPORT HELPLINES                      */}
         {/* ============================================================ */}
         {activeTopic === 'crisis' && (
           <div className="bg-white border border-slate-100 p-6 sm:p-8 rounded-3xl shadow-sm space-y-6 animate-fade-in">
@@ -311,9 +525,9 @@ export default function App() {
         )}
 
         {/* ============================================================ */}
-        {/* RENDER VIEW 3: STANDARD FAQ ACCORDION                        */}
+        {/* RENDER VIEW 4: STANDARD FAQ ACCORDION                        */}
         {/* ============================================================ */}
-        {activeTopic !== 'suggest' && activeTopic !== 'crisis' && (
+        {activeTopic !== 'suggest' && activeTopic !== 'crisis' && activeTopic !== 'talk' && (
           <div className="w-full flex flex-col gap-4 mt-2">
             
             <p className="text-sm text-[#5F737B] font-medium px-1">
@@ -353,7 +567,7 @@ export default function App() {
                           {faq.answer}
                         </p>
 
-                        {/* 🚀 THE SMART SERVICE BRIDGE CTA (Optional Fast-Pass) */}
+                        {/* THE SMART SERVICE BRIDGE CTA (Optional Fast-Pass) */}
                         {faq.relatedService && (
                           <div className="mt-6 bg-[#F8F5FF] border border-[#E0D4FD] p-5 sm:p-6 rounded-2xl flex flex-col gap-4 transition-all">
                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -376,12 +590,12 @@ export default function App() {
                               ) : null}
                             </div>
 
-                            {/* PROGRESSIVE DISCLOSURE: Optional Age/State Form */}
+                            {/* PROGRESSIVE DISCLOSURE */}
                             {bridgeActiveFaq === faq.id && (
                               <div className="pt-5 border-t border-[#E0D4FD] animate-fade-in flex flex-col gap-4">
                                 <div>
                                   <span className="text-sm font-bold text-[#163D46]">
-                                    Drop your age and state below, and we'll instantly filter the safest clinics for you when you arrive.
+                                    Optional: Drop your age and state below, and we'll instantly filter the safest clinics for you when you arrive.
                                   </span>
                                 </div>
 
@@ -389,7 +603,9 @@ export default function App() {
                                   
                                   {/* SEGMENTED CONTROL: SINGLE-TAP AGE TOGGLE */}
                                   <div className="w-full sm:w-1/2 flex flex-col gap-1.5">
-                                  
+                                    <span className="text-[10px] font-bold uppercase tracking-wider pl-1 text-slate-400">
+                                      Tap your age group:
+                                    </span>
                                     <div className="grid grid-cols-2 p-1 bg-white border border-[#C8B4FA] rounded-xl transition-all w-full">
                                       <button 
                                         onClick={() => setBridgeAgeGroup('under_18')}
@@ -416,7 +632,9 @@ export default function App() {
 
                                   {/* CUSTOM MOBILE-FRIENDLY STATE DROPDOWN */}
                                   <div className="w-full sm:w-1/2 flex flex-col gap-1.5">
-                                    
+                                    <span className="text-[10px] font-bold uppercase tracking-wider pl-1 text-slate-400">
+                                      Select your state:
+                                    </span>
                                     <div className="relative w-full h-full">
                                       <select 
                                         value={bridgeState} 
@@ -436,7 +654,6 @@ export default function App() {
 
                                 </div>
                                 
-                                {/* GO Redirect Button */}
                                 <div className="mt-2">
                                   <button 
                                     onClick={() => handleBridgeRedirect(faq.relatedService)}
